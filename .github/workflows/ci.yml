@@ -73,4 +73,3 @@ steps:
           "$IMAGE"
 
         docker image prune -f
-
