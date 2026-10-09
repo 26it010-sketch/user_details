@@ -18,9 +18,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: |
-          docker build \
-            -t "${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest" .
+  env:
+    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  run: |
+    docker build -t "${DOCKERHUB_USERNAME}/meena-backend:latest" .
+
+- name: Push image to Docker Hub
+  run: |
+    docker push "${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest"
 
       - name: Login to Docker Hub
         if: github.event_name == 'push'
