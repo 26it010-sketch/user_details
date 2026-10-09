@@ -68,14 +68,13 @@
 #               "$IMAGE"
 #             docker image prune -f
 
-
-- name: Build Docker image
-  env:
-    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  run: |
-    echo "Checking Docker Hub username format"
-    if [[ ! "$DOCKERHUB_USERNAME" =~ ^[a-z0-9]+([_-][a-z0-9]+)*$ ]]; then
-      echo "Docker Hub username is empty or has invalid characters"
-      exit 1
-    fi
-    docker build -t "${DOCKERHUB_USERNAME}/meena-backend:latest" .
+name: Build Docker image
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+run: |
+  echo "Checking Docker Hub username format"
+  if [[ ! "$DOCKERHUB_USERNAME" =~ ^[a-z0-9]+([_-][a-z0-9]+)*$ ]]; then
+    echo "Docker Hub username is empty or has invalid characters"
+    exit 1
+  fi
+  docker build -t "${DOCKERHUB_USERNAME}/meena-backend:latest" .
