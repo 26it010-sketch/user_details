@@ -1,5 +1,5 @@
 
-name: My Project CI
+name: Build React and FastAPI
 
 on:
   push:
@@ -10,44 +10,54 @@ on:
       - main
 
 jobs:
-  backend-check:
+  build-project:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get project code
+      # 1. Download code from GitHub
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install backend packages
-        run: |
-          cd backend
-          pip install -r requirements.txt
-
-      - name: Check Python syntax
-        run: python -m compileall -q backend
-
-  frontend-build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Get project code
-        uses: actions/checkout@v4
-
-      - name: Setup Node
+      # 2. Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend packages
+      # 3. Install React packages
+      - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: Build React
+      # 4. Build React frontend
+      - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      # 5. Copy React build into backend/frontend
+      - name: Copy frontend build to backend
+        run: |
+          rm -rf backend/frontend
+          mkdir -p backend/frontend
+          cp -a frontend/dist/. backend/frontend/
+
+      # 6. Install Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 7. Install FastAPI dependencies
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      # 8. Check Python syntax
+      - name: Check Python syntax
+        run: python -m compileall -q backend
+
+      # 9. Build backend Docker image
+      - name: Build Docker image
+        run: docker build -t meena-backend:latest ./backend
