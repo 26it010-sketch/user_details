@@ -1,5 +1,5 @@
 
-name: Build Frontend and Backend
+name: Build and Deploy Application
 
 on:
   push:
@@ -10,39 +10,55 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t "${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest" .
+
+      - name: Login to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
         with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
+      - name: Push image to Docker Hub
+        if: github.event_name == 'push'
+        run: |
+          docker push \
+            "${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest"
 
-      - name: Build React frontend
-        working-directory: frontend
-        run: npm run build
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Deploy to Ubuntu server
+        if: github.event_name == 'push'
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest
         with:
-          python-version: "3.11"
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: IMAGE
+          script: |
+            set -e
 
-      - name: Install backend dependencies
-        working-directory: backend
-        run: pip install -r requirements.txt
+            docker pull "$IMAGE"
 
-      - name: Check Python syntax
-        run: python -m compileall -q backend
+            docker stop meena-backend-container || true
+            docker rm meena-backend-container || true
 
-      - name: Build complete Docker image
-        run: docker build -t meena-backend:latest .
+            docker run -d \
+              --name meena-backend-container \
+              --restart unless-stopped \
+              --network meena-network \
+              --env-file /home/ubuntu/meena/server-DB/backend/.env \
+              -p 9000:9000 \
+              "$IMAGE"
+
+            docker image prune -f
