@@ -1,69 +1,76 @@
-
 name: Build and Deploy Application
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+push:
+branches:
+- main
+pull_request:
+branches:
+- main
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+build-and-deploy:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+```
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
 
-      - name: Build Docker image
-  env:
-    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  run: |
-    docker build -t "${DOCKERHUB_USERNAME}/meena-backend:latest" .
+  - name: Validate Docker Hub username
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    run: |
+      if [ -z "$DOCKERHUB_USERNAME" ]; then
+        echo "DOCKERHUB_USERNAME secret is missing or empty"
+        exit 1
+      fi
 
-- name: Push image to Docker Hub
-  run: |
-    docker push "${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest"
+  - name: Build Docker image
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    run: |
+      docker build -t "${DOCKERHUB_USERNAME}/meena-backend:latest" .
 
-      - name: Login to Docker Hub
-        if: github.event_name == 'push'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+  - name: Login to Docker Hub
+    if: github.event_name == 'push'
+    uses: docker/login-action@v3
+    with:
+      username: ${{ secrets.DOCKERHUB_USERNAME }}
+      password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push image to Docker Hub
-        if: github.event_name == 'push'
-        run: |
-          docker push \
-            "${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest"
+  - name: Push image to Docker Hub
+    if: github.event_name == 'push'
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    run: |
+      docker push "${DOCKERHUB_USERNAME}/meena-backend:latest"
 
-      - name: Deploy to Ubuntu server
-        if: github.event_name == 'push'
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: IMAGE
-          script: |
-            set -e
+  - name: Deploy to Ubuntu server
+    if: github.event_name == 'push'
+    uses: appleboy/ssh-action@v1.2.0
+    env:
+      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/meena-backend:latest
+    with:
+      host: ${{ secrets.SERVER_HOST }}
+      username: ${{ secrets.SERVER_USER }}
+      key: ${{ secrets.SERVER_SSH_KEY }}
+      envs: IMAGE
+      script: |
+        set -e
 
-            docker pull "$IMAGE"
+        docker pull "$IMAGE"
 
-            docker stop meena-backend-container || true
-            docker rm meena-backend-container || true
+        docker stop meena-backend-container || true
+        docker rm meena-backend-container || true
 
-            docker run -d \
-              --name meena-backend-container \
-              --restart unless-stopped \
-              --network meena-network \
-              --env-file /home/ubuntu/meena/server-DB/backend/.env \
-              -p 9000:9000 \
-              "$IMAGE"
+        docker run -d \
+          --name meena-backend-container \
+          --restart unless-stopped \
+          --network meena-network \
+          --env-file /home/ubuntu/meena/server-DB/backend/.env \
+          -p 9000:9000 \
+          "$IMAGE"
 
-            docker image prune -f
+        docker image prune -f
+```
