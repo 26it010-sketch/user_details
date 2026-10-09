@@ -1,5 +1,5 @@
 
-name: Build React and FastAPI
+name: Build Frontend and Backend
 
 on:
   push:
@@ -10,15 +10,13 @@ on:
       - main
 
 jobs:
-  build-project:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Download code from GitHub
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Install Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -26,38 +24,31 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # 3. Install React packages
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      # 4. Build React frontend
-      - name: Build frontend
+      - name: Build React frontend
         working-directory: frontend
         run: npm run build
 
-      # 5. Copy React build into backend/frontend
-      - name: Copy frontend build to backend
+      - name: Copy frontend build into backend
         run: |
           rm -rf backend/frontend
           mkdir -p backend/frontend
           cp -a frontend/dist/. backend/frontend/
 
-      # 6. Install Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 7. Install FastAPI dependencies
       - name: Install backend dependencies
         working-directory: backend
         run: pip install -r requirements.txt
 
-      # 8. Check Python syntax
       - name: Check Python syntax
         run: python -m compileall -q backend
 
-      # 9. Build backend Docker image
-      - name: Build Docker image
+      - name: Build backend Docker image
         run: docker build -t meena-backend:latest ./backend
