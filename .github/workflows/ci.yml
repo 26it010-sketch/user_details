@@ -32,12 +32,6 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Copy frontend build into backend
-        run: |
-          rm -rf backend/frontend
-          mkdir -p backend/frontend
-          cp -a frontend/dist/. backend/frontend/
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -50,5 +44,5 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q backend
 
-      - name: Build backend Docker image
-        run: docker build -t meena-backend:latest ./backend
+      - name: Build complete Docker image
+        run: docker build -t meena-backend:latest .
